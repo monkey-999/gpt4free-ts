@@ -12,8 +12,7 @@ yarn
 yarn start
 ```
 
-## Deploy with docker-compose
-
+## Run with docker
 first, you should create file .env
 ```env
 http_proxy=http://host:port
@@ -21,6 +20,15 @@ http_proxy=http://host:port
 # get api key here https://rapidapi.com/calvinloveland335703-0p6BxLYIH8f/api/temp-mail44
 rapid_api_key=xxxxxxxxxx
 ```
+
+```
+docker run --env-file .env xiangsx/gpt4free-ts:latest
+```
+
+## Deploy with docker-compose
+
+first, you should create file .env; Follow step "Run with docker
+
 deploy
 ```
 docker-compose up --build -d
@@ -44,6 +52,8 @@ resignup?: number; // default 0 if set 1, auto sign up when gpt4 times use up
 // event: error
 // data: GPT-4 rate limit exceeded (>5 messages every 3 hours). Time remaining: 179 minutes
 // if you see this try set resignup=1 or use gpt-3.5-turbo
+
+// if you want chat with context, set actionType=continue and chatId={Defined constant uuid}
 ```
 
 ### test now!

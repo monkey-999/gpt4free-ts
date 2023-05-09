@@ -1,13 +1,12 @@
 //@ts-ignore
 import UserAgent from 'user-agents';
-import tlsClient from 'tls-client';
-
 import {Chat, ChatOptions, Request, Response, ResponseStream} from "../base";
 import {CreateEmail, TempEmailType, TempMailMessage} from '../../utils/emailFactory';
-import axios, {AxiosInstance, AxiosRequestConfig, CreateAxiosDefaults} from "axios";
+import {AxiosInstance, AxiosRequestConfig, CreateAxiosDefaults} from "axios";
 import {v4} from "uuid";
 import es from "event-stream";
 import {encryptWithAes256Cbc, parseJSON} from "../../utils";
+import {CreateAxiosProxy, CreateTlsProxy} from "../../utils/proxyAgent";
 
 interface ForefrontRequest extends Request {
     options?: {
@@ -77,13 +76,6 @@ export class Forefront extends Chat {
                     cb(null, '');
                     return;
                 }
-                // const data = parseJSON(str, {}) as ChatCompletionChunk;
-                // if (!data.choices) {
-                //     cb(null, '');
-                //     return;
-                // }
-                // const [{delta: {content}}] = data.choices;
-                // cb(null, content);
                 cb(null, str);
             })).on('data', (data) => {
                 if (!data) {
@@ -150,7 +142,7 @@ export class Forefront extends Chat {
                     return;
                 }
                 const [{delta: {content}}] = data.choices;
-                cb(null, content||'');
+                cb(null, content || '');
             }))
             return {text: stream};
         } catch (e: any) {
@@ -181,7 +173,7 @@ export class Forefront extends Chat {
     async initClient() {
         let hisSession = await this.createToken();
         this.session = hisSession;
-        this.client = axios.create({
+        this.client = CreateAxiosProxy({
             headers: {
                 'authority': 'chat-server.tenant-forefront-default.knative.chi.coreweave.com',
                 'accept': '*/*',
@@ -206,19 +198,16 @@ export class Forefront extends Chat {
         const mailbox = CreateEmail(TempEmailType.TempEmail44);
         const mailAddress = await mailbox.getMailAddress();
         const agent = new UserAgent().toString();
-        const session = new tlsClient.Session({clientIdentifier: 'chrome_108'});
+        const session = CreateTlsProxy({clientIdentifier: 'chrome_108'});
         session.headers = {
             origin: 'https://accounts.forefront.ai',
             'user-agent': agent, // Replace with actual random user agent
-        }
-        if (this.options?.proxy) {
-            session.proxy = this.options.proxy;
         }
         const signEmailRes = await session.post('https://clerk.forefront.ai/v1/client/sign_ups?_clerk_js_version=4.39.0',
             {data: {'email_address': mailAddress}});
         const traceToken = (signEmailRes.data as any)?.response?.id;
         if (!traceToken) {
-            throw new Error('Failed to create account! sign email res parse token failed!');
+            throw new Error(`Failed to create account! sign email res parse token failed! res:${JSON.stringify(signEmailRes.data)}`);
         }
 
         const verifyRes = await session.post(`https://clerk.forefront.ai/v1/client/sign_ups/${traceToken}/prepare_verification?_clerk_js_version=4.39.0`, {
